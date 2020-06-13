@@ -20,7 +20,7 @@ function analysis() {
   //Se almacena el rango de la columna de los datos de las fechas de quejas.
   var datesColumnRange = "D2:D" + dataSheet.getLastRow();
   //Se almacena el rango de las columna de los datos del tipo de quejas.
-  var complainColumnRange = "F2:D" + dataSheet.getLastRow();
+  var complainColumnRange = "E2:E" + dataSheet.getLastRow();
   
   //Almacenamos en una variable un array con las fechas que se dieron las quejas.
   var data = dataSheet.getRange(datesColumnRange).getValues();
@@ -28,8 +28,9 @@ function analysis() {
   var complains = dataSheet.getRange(complainColumnRange).getValues();
   
   /*
-  El análisis se va a realizar según la fechas que quiera analizar el cliente, por lo que se va a analizar las fechas de un rango de fechas dado.
+     El análisis se va a realizar según la fechas que quiera analizar el cliente, por lo que se va a analizar las fechas de un rango de fechas dado.
   */
+  
   //Se almacena la fecha desde donde se quiere empezar el rango. El cliente lo debe ingresar desde la hoja de análisis.
   var dateFrom = new Date(Date.parse(analysisSheet.getRange(4, 2).getValue()));
   //Se almacena la fecha hasta donde se quiere empezar el rango. El cliente lo debe ingresar desde la hoja de análisis.
@@ -39,8 +40,19 @@ function analysis() {
   if (dateFrom && dateTo) {
     //El cliente sí ingresó el rango de fechas.
     
-    //Ahora se almacena fechas que sí cumplen con el rango dado.
+    //Ahora se almacena fechas que sí cumplen con el rango dado y el tipo de quejas que se dieron.
     var filteredDates = checkRange(data, complains, dateFrom, dateTo);
+    //Ahora, como las fechas y los tipos de quejas están en una misma variable, necesitamos separarlos.
+    
+    //Se almacenan las fechas que cumplen las condiciones.
+    var oficialDates = filteredDates.map(function(x) {
+      return x[0]
+    });
+    
+    //Se almacenan los tipos de quejas que se dieron en los días que cumplen las condiciones.
+    var oficialComplains = filteredDates.map(function(x) {
+      return x[1];
+    });
     
     //Verificamos que si hubo quejas en el rango dado.
     if (filteredDates.length > 0) {
@@ -48,14 +60,20 @@ function analysis() {
       
       //Se crean las fechas que se encuentran dentro del rango a revisar
       var datesToCheck = getDates(dateFrom, dateTo);
-      //Ahora se almacena las fechas en las que se dieron quejas y la cantidad de quejas. Se analizan aquellas fechas que cumplieron con las condiciones.
-      var datesComplains = datesCount(filteredDates);
+      
+      //Se almacena las fechas en las que se dieron quejas y la cantidad de quejas. Se analizan aquellas fechas que cumplieron con las condiciones.
+      var datesComplains = datesCount(oficialDates);
+      
+      //Se almacenan el tipo de quejas y la cantidad de aparición.
+      var complainsTotal = complainsCount(oficialComplains);
       
       //Ahora se agregan las fechas con quejas encontradas encontra las fechas que están dentro del rango.
       var analysisDates = completeDates(datesComplains, datesToCheck);
       
       //Se agregan a la hoja de análisis las fechas de queja y su cantidad.
       analysisSheet.getRange(9, 1, analysisDates.length, 2).setValues(analysisDates);
+      
+      analysisSheet.getRange(9, 13, complainsTotal.length, 2).setValues(complainsTotal);
       
       //La última fila de los datos.
       var dataRange = 8 + analysisDates.length;
@@ -152,6 +170,40 @@ function sortFunction(a, b){
   }
 }
 
+function complainsCount(oficialComplains) {
+  //Variable donde se va a almacenar la fecha cuando se dieron quejas y la cantidad de quejas que se dieron.
+  let data = [];
+  //Bucle que recorre las fechas filtradas
+  for(let i = 0; i < oficialComplains.length; i++) {
+    /*
+    Se crea un contador para llevar la cantidad del tipo de quejas que se dieron en el rango ingresado. Se inicializa en 1 porque se debe tomar en cuenta el tipo de queja que
+    se está analizando. Si ese tipo de queja se está analizando es porque ese hubo al menos una queja de ese tipo; es decir, ella misma.
+    */
+    let counter = 1;
+    //Bucle donde se analizan las fechas posteriores a la fecha que se está analizando.
+    for(let j = i+1; j < oficialComplains.length; j++) {
+      //Se verifica que si la quejas siguientes son iguales a la que se está analizando. Si sí, es porque hay más de una queja.
+      console.log(oficialComplains[i] + " === " + oficialComplains[j]);
+      console.log(oficialComplains[i].toString() === oficialComplains[j].toString());
+      if(oficialComplains[i].toString() === oficialComplains[j].toString()) {
+        //Se aumenta el contador del tipo de queja, porque se encontro una coincidencia.
+        ++counter;
+        //Se elimina la queja que se comparó desde la variable en donde están todas los tipos de quejas que se están analizando. Se elimina porque ya fue contada como una queja 
+        //de la queja que se está analizando.
+        oficialComplains.splice(j, 1);
+        //Como se elimina el tipo de queja que cumple la condición, el recorrido debe empezar desde el mismo índice que se estaba analizando, porque, como se eliminó 
+        //la queja que se estaba comparando, una nueva queja se corrió a ese índice donde estaba la queja que se acaba de eliminar.
+        --j;
+      }
+    }
+    //Se agrega el objeto del tipo de queja y la cantidad de la misma queja que se encontraron en la variable de los datos oficiales.
+    data.push([oficialComplains[i], counter]);
+  }
+  
+  //Se devuelven las quejas con sus cantidad de aparición.
+  return data;
+}
+
 /*
 Función que compara las fechas con quejas encontradas con las fechas generadas en el rango.
 Este enfoque funciona solamente porque las fechas con quejas están ordenadas.
@@ -216,6 +268,7 @@ function addDays(dat, days) {
 /*Clears data from the sheet*/
 function clearData(sheet) {
   sheet.getRange("A9:E").clearContent();
+  sheet.getRange("M9:N").clearContent();
   sheet.getRange(4, 2).setBackground('white');
   sheet.getRange(5, 2).setBackground('white');
   sheet.getRange(4, 3).clearContent();
