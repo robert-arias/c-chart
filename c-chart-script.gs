@@ -90,20 +90,15 @@ Esta función recorre las fechas que se tomaron de la hoja de quejas.
 function checkRange(data, complains, dateFrom, dateTo) {
   //Array donde se van a almacenar aquellas fechas que cumplen con las condiciones
   let filteredDates = [];
-  //Se realiza un recorrido entre los datos
-  data.forEach(function(datum) {
-    //Se verifica que la fecha que se está verificando cumple las condiciones.
-    if(Date.parse(datum) >= dateFrom && Date.parse(datum) <= dateTo) {
-      //Si cumple las funciones, se almacena en la variable que se creó.
-      filteredDates.push(Date.parse(datum));
-    }
-  });
   
-  /*for(let i = 0; i < data.length; i++) {
+  //Se realiza un recorrido entre los datos
+  for(let i = 0; i < data.length; i++) {
+    //Se verifica que la fecha que se está verificando cumple las condiciones.
     if(Date.parse(data[i]) >= dateFrom && Date.parse(data[i]) <= dateTo) {
-      
+      //Si cumple las condiciones, se almacena la fecha y el tipo de queja.
+      filteredDates.push([Date.parse(data[i]), complains[i]]);
     }
-  }*/
+  }
   
   //Se devuelven aquellas fechas que cumplen con la condición del rango de fecha.
   return filteredDates;
