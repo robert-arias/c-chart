@@ -16,11 +16,16 @@ function analysis() {
   que tenga la mayor cantidad de filas (porque esa sería la última de toda la hoja de cálculo; de todas las columnas).
   Este enfoque funciona únicamente porque la última fila va a ser la misma para todas las columnas de la hoja; es una matriz cuadrada.
   */
+  
   //Se almacena el rango de la columna de los datos de las fechas de quejas.
   var datesColumnRange = "D2:D" + dataSheet.getLastRow();
+  //Se almacena el rango de las columna de los datos del tipo de quejas.
+  var complainColumnRange = "F2:D" + dataSheet.getLastRow();
   
   //Almacenamos en una variable un array con las fechas que se dieron las quejas.
   var data = dataSheet.getRange(datesColumnRange).getValues();
+  //Almacenamos en una variable un array con los tipos de quejas que se dieron.
+  var complains = dataSheet.getRange(complainColumnRange).getValues();
   
   /*
   El análisis se va a realizar según la fechas que quiera analizar el cliente, por lo que se va a analizar las fechas de un rango de fechas dado.
@@ -35,7 +40,7 @@ function analysis() {
     //El cliente sí ingresó el rango de fechas.
     
     //Ahora se almacena fechas que sí cumplen con el rango dado.
-    var filteredDates = checkRange(data, dateFrom, dateTo);
+    var filteredDates = checkRange(data, complains, dateFrom, dateTo);
     
     //Verificamos que si hubo quejas en el rango dado.
     if (filteredDates.length > 0) {
@@ -82,7 +87,7 @@ Esta función recorre las fechas que se tomaron de la hoja de quejas.
 2. Agrega aquellas fechas que sí cumplen con la condición a un array.
 3. Devuelve el array con las fechas que cumplen la condición.
 */
-function checkRange(data, dateFrom, dateTo) {
+function checkRange(data, complains, dateFrom, dateTo) {
   //Array donde se van a almacenar aquellas fechas que cumplen con las condiciones
   let filteredDates = [];
   //Se realiza un recorrido entre los datos
@@ -93,6 +98,13 @@ function checkRange(data, dateFrom, dateTo) {
       filteredDates.push(Date.parse(datum));
     }
   });
+  
+  /*for(let i = 0; i < data.length; i++) {
+    if(Date.parse(data[i]) >= dateFrom && Date.parse(data[i]) <= dateTo) {
+      
+    }
+  }*/
+  
   //Se devuelven aquellas fechas que cumplen con la condición del rango de fecha.
   return filteredDates;
 }
@@ -124,10 +136,8 @@ function datesCount(filteredDates) {
         --j;
       }
     }
-    //Variable donde se almacena la fecha en la que se dieron las quejas y la cantidad de quejas que se dieron.
-    let complainDate = [new Date(filteredDates[i]), counter];
     //Se agrega el objeto del día de la fecha en análisis y la cantidad de quejas que se encontraron en la variable de los datos oficiales.
-    data.push(complainDate);
+    data.push([new Date(filteredDates[i]), counter]);
   }
   
   //Ordenamos las fechas.
@@ -161,19 +171,15 @@ function completeDates(foundDates, rangeDates) {
     if(i <= foundDates.length - 1) {
       //Verificamos si la fecha generada es igual a la fecha con quejas encontrada
       if(rangeDates[i].getTime() == foundDates[i][0].getTime()) {
-        //Variable donde se almacena la fecha en la que se dieron las quejas y la cantidad de quejas que se dieron.
-        let complainDate = [new Date(rangeDates[i]), foundDates[i][1]];
         //Se agrega el objeto del día de la fecha en análisis y la cantidad de quejas que se encontraron en la variable de los datos oficiales.
-        data.push(complainDate);
+        data.push([new Date(rangeDates[i]), foundDates[i][1]]);
         //Eliminamos la fecha con quejas de la búsqueda.
         foundDates.splice(i, 1);        
       }
       else {
         //Si no hay coincidencias, significa que en ese día no hubo quejas, por lo que se agrega cero (0) quejas.
-        //Variable donde se almacena la fecha en la que se dieron las quejas y la cantidad de quejas que se dieron.
-        let complainDate = [new Date(rangeDates[i]), 0];
         //Se agrega el objeto del día de la fecha en análisis y la cantidad de quejas.
-        data.push(complainDate);
+        data.push([new Date(rangeDates[i]), 0]);
       }
       //Eliminamos del array la fecha generada, porque ya no se tiene que comparar.
       rangeDates.splice(i, 1);
