@@ -275,31 +275,27 @@ function clearData(sheet) {
   sheet.getRange(7, 1).clearContent();
 }
 
-
-
-
-function PDF()
-{
-    var file = null;
- 
-    var files = DriveApp.getFilesByName(SpreadsheetApp.getActiveSpreadsheet().getName());
- 
-    if ( files.hasNext() )
-            file = files.next();
- 
-    let newFile = DriveApp.createFile(file.getAs('application/pdf'));
-    newFile.setName('Reporte sobre servicios de la compañia RED TOP'+ new Date());
-    
-    var folder = DriveApp.getFolderById("15ijorZiBmMzHvfi1IWIhGXClvr73w3sv");
-    folder.addFile(newFile);
-   
-    /*var htmlOutput = HtmlService
-    .createHtmlOutput('El documento se ha guardado con exito en la carpeta <br> <a href="https://drive.google.com/drive/folders/15ijorZiBmMzHvfi1IWIhGXClvr73w3sv?usp=sharing">Reportes</a> !')
-    .setWidth(400) 
-    .setHeight(200); 
-     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Aviso');*/
-   
-   Browser.msgBox("Reporte generado con exito");
+function PDF() {
+  var file = null;
+  
+  var files = DriveApp.getFilesByName(SpreadsheetApp.getActiveSpreadsheet().getName());
+  
+  if ( files.hasNext() )
+    file = files.next();
+  
+  let newFile = DriveApp.createFile(file.getAs('application/pdf'));
+  newFile.setName('Reporte sobre servicios de la compañia RED TOP'+ new Date());
+  
+  var folder = DriveApp.getFolderById("15ijorZiBmMzHvfi1IWIhGXClvr73w3sv");
+  folder.addFile(newFile);
+  
+  /*var htmlOutput = HtmlService
+  .createHtmlOutput('El documento se ha guardado con exito en la carpeta <br> <a href="https://drive.google.com/drive/folders/15ijorZiBmMzHvfi1IWIhGXClvr73w3sv?usp=sharing">Reportes</a> !')
+  .setWidth(400) 
+  .setHeight(200); 
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Aviso');*/
+  
+  Browser.msgBox("Reporte generado con exito");
 }
 
 // Pestaña PDF
@@ -316,10 +312,140 @@ function copyData() {
   
   var controlLimits = analysisSheet.getRange("H4:H6").getValues();
   var analysisDate = analysisSheet.getRange(1, 14).getValue();
+  var rangeDates = analysisSheet.getRange("B4:B5").getValues();
+  
   analysisDataSheet.getRange(lastRow, 1, 1, 1).setValue(analysisDate);
-  analysisDataSheet.getRange(lastRow, 2, 1, 3).setValues(col2row(controlLimits));
+  analysisDataSheet.getRange(lastRow, 2, 1, 2).setValues(col2row(rangeDates));
+  analysisDataSheet.getRange(lastRow, 4, 1, 3).setValues(col2row(controlLimits));
+  
 }
 
 function col2row(column) {
   return [column.map(function(row) {return row[0];})];
-} 
+}
+
+function row2col(row) {
+  return row.map(function(elem) {return [elem];});
+}
+
+function comparativeAnalysis() {
+  var analysisSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ComparativeAnalysis");
+  var dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Form Responses 1");
+  var analysisDataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("AnalysisData");
+  
+  clearData(analysisSheet);
+  
+  var datesColumnRange = "D2:D" + dataSheet.getLastRow();
+  var complainColumnRange = "E2:E" + dataSheet.getLastRow();
+  
+  var data = dataSheet.getRange(datesColumnRange).getValues();
+  var complains = dataSheet.getRange(complainColumnRange).getValues();
+  
+  //Agarra toda la fila donde la fecha sea igual a la fecha ingresada.
+  var dataAnalysisRow = search(new Date(Date.parse(analysisSheet.getRange(4, 5).getValue())), analysisDataSheet);
+    
+  var dateFrom = new Date(Date.parse(analysisSheet.getRange(4, 2).getValue()));
+  var dateTo = new Date(Date.parse(analysisSheet.getRange(5, 2).getValue()));
+  
+  if ((dateFrom && dateTo) && dataAnalysisRow.length > 0) {
+    
+    //Tomo los datos del control (límite superior, inferior y media) de la fecha que se agregó
+    var limitsData = row2col([dataAnalysisRow[0][3], dataAnalysisRow[0][4], dataAnalysisRow[0][5]]);
+    //Adjunto los datos en la tabla
+    analysisSheet.getRange(4, 14, 3, 1).setValues(limitsData);
+    
+    var filteredDates = checkRange(data, complains, dateFrom, dateTo);
+    
+    var oficialDates = filteredDates.map(function(x) {
+      return x[0]
+    });
+    
+    var oficialComplains = filteredDates.map(function(x) {
+      return x[1];
+    });
+    
+    if (filteredDates.length > 0) {
+      //Sí hubo quejas.
+      
+      //Aquí se hace el gráfico del análisis con el que se está comparando
+      oldDataAnalysis(dataAnalysisRow, data, complains, analysisSheet);
+      
+      //Se crean las fechas que se encuentran dentro del rango a revisar
+      var datesToCheck = getDates(dateFrom, dateTo);
+      
+      //Se almacena las fechas en las que se dieron quejas y la cantidad de quejas. Se analizan aquellas fechas que cumplieron con las condiciones.
+      var datesComplains = datesCount(oficialDates);
+      
+      //Se almacenan el tipo de quejas y la cantidad de aparición.
+      var complainsTotal = complainsCount(oficialComplains);
+      
+      //Ahora se agregan las fechas con quejas encontradas encontra las fechas que están dentro del rango.
+      var analysisDates = completeDates(datesComplains, datesToCheck);
+      
+      //Se agregan a la hoja de análisis las fechas de queja y su cantidad.
+      analysisSheet.getRange(9, 1, analysisDates.length, 2).setValues(analysisDates);//tabla con sumatoria
+      
+      analysisSheet.getRange(27, 7, complainsTotal.length, 2).setValues(complainsTotal);//tipo de quejas y cantidad
+      
+      //La última fila de los datos.
+      var dataRange = 8 + analysisDates.length;
+      
+      //Se copia el dato de LCI en los datos.
+      analysisSheet.getRange("C9:C" + dataRange).setValue("=$N$6");
+      //Se copia el dato de la media en los datos.
+      analysisSheet.getRange("D9:D" + dataRange).setValue("=$N$4");
+      //Se copia el dato de LCS en los datos.
+      analysisSheet.getRange("E9:E" + dataRange).setValue("=$N$5");
+    }
+    else {
+      //No hubo quejas.
+      analysisSheet.getRange(7, 1).setValue("NO SE ENCONTRARON QUEJAS DENTRO EL RANGO ESTABLECIDO.");
+    }
+    
+  }
+  else {
+    //El cliente no ingresó el rango de fechas.
+    analysisSheet.getRange(4, 2).setBackground('red');
+    analysisSheet.getRange(5, 2).setBackground('red');
+    analysisSheet.getRange(4, 3).setValue("Debe agregar el rango de fechas para el análisis.");
+  }
+}
+
+function oldDataAnalysis(dataAnalysisRow, data, complains, analysisSheet) {
+  var controlLimits = [dataAnalysisRow[0][3], dataAnalysisRow[0][4], dataAnalysisRow[0][5]];
+  var dateFrom = new Date(Date.parse(dataAnalysisRow[0][1]));
+  var dateTo = new Date(Date.parse(dataAnalysisRow[0][2]));
+  var filteredDates = checkRange(data, complains, dateFrom, dateTo);
+  
+  var oficialDates = filteredDates.map(function(x) {
+    return x[0]
+  });
+  
+  var oficialComplains = filteredDates.map(function(x) {
+    return x[1];
+  });
+  
+  //Se crean las fechas que se encuentran dentro del rango a revisar
+  var datesToCheck = getDates(dateFrom, dateTo);
+  
+  //Se almacena las fechas en las que se dieron quejas y la cantidad de quejas. Se analizan aquellas fechas que cumplieron con las condiciones.
+  var datesComplains = datesCount(oficialDates);
+  
+  //Se almacenan el tipo de quejas y la cantidad de aparición.
+  var complainsTotal = complainsCount(oficialComplains);
+  
+  //Ahora se agregan las fechas con quejas encontradas encontra las fechas que están dentro del rango.
+  var analysisDates = completeDates(datesComplains, datesToCheck);
+  
+  /*TENÉS QUE TRABAJAR CON ANALYSISDATES Y COMPLAINSTOTAL PARA CREAR DOS GRÁFICAS; LA GRÁFICA DE CONTROL Y LA DEL TIPO DE QUEJAS RESPECTIVAMENTE*/
+}
+
+function search(fecha, sourceSheet) {
+  var targetValues;
+  
+  targetValues = sourceSheet.getRange("A4:F").getValues().filter(function (r) {
+    return r[0].toString() == fecha.toString()
+  });
+  
+  return targetValues;
+}
