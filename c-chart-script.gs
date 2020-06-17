@@ -71,9 +71,9 @@ function analysis() {
       var analysisDates = completeDates(datesComplains, datesToCheck);
       
       //Se agregan a la hoja de análisis las fechas de queja y su cantidad.
-      analysisSheet.getRange(9, 1, analysisDates.length, 2).setValues(analysisDates);
+      analysisSheet.getRange(9, 1, analysisDates.length, 2).setValues(analysisDates);//tabla con sumatoria
       
-      analysisSheet.getRange(9, 13, complainsTotal.length, 2).setValues(complainsTotal);
+      analysisSheet.getRange(27, 7, complainsTotal.length, 2).setValues(complainsTotal);//tipo de quejas y cantidad
       
       //La última fila de los datos.
       var dataRange = 8 + analysisDates.length;
@@ -268,9 +268,58 @@ function addDays(dat, days) {
 /*Clears data from the sheet*/
 function clearData(sheet) {
   sheet.getRange("A9:E").clearContent();
-  sheet.getRange("M9:N").clearContent();
+  sheet.getRange("G27:H").clearContent();
   sheet.getRange(4, 2).setBackground('white');
   sheet.getRange(5, 2).setBackground('white');
   sheet.getRange(4, 3).clearContent();
   sheet.getRange(7, 1).clearContent();
 }
+
+
+
+
+function PDF()
+{
+    var file = null;
+ 
+    var files = DriveApp.getFilesByName(SpreadsheetApp.getActiveSpreadsheet().getName());
+ 
+    if ( files.hasNext() )
+            file = files.next();
+ 
+    let newFile = DriveApp.createFile(file.getAs('application/pdf'));
+    newFile.setName('Reporte sobre servicios de la compañia RED TOP'+ new Date());
+    
+    var folder = DriveApp.getFolderById("15ijorZiBmMzHvfi1IWIhGXClvr73w3sv");
+    folder.addFile(newFile);
+   
+    /*var htmlOutput = HtmlService
+    .createHtmlOutput('El documento se ha guardado con exito en la carpeta <br> <a href="https://drive.google.com/drive/folders/15ijorZiBmMzHvfi1IWIhGXClvr73w3sv?usp=sharing">Reportes</a> !')
+    .setWidth(400) 
+    .setHeight(200); 
+     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Aviso');*/
+   
+   Browser.msgBox("Reporte generado con exito");
+}
+
+// Pestaña PDF
+function onOpen(){
+SpreadsheetApp.getUi().createMenu('Generar Reporte').addItem('Generar Reporte', 'PDF').addToUi()
+}
+
+
+function copyData() {
+  var analysisSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("AnalisisSheet");
+  var analysisDataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("AnalysisData");
+  
+  var lastRow = analysisDataSheet.getLastRow() + 1;
+  
+  var controlLimits = analysisSheet.getRange("H4:H6").getValues();
+  var analysisDate = analysisSheet.getRange(1, 14).getValue();
+  analysisDataSheet.getRange(lastRow, 1, 1, 1).setValue(analysisDate);
+  analysisDataSheet.getRange(lastRow, 2, 1, 3).setValues(col2row(controlLimits));
+}
+
+function col2row(column) {
+  return [column.map(function(row) {return row[0];})];
+} 
